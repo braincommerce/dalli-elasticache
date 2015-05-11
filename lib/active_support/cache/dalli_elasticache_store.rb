@@ -36,7 +36,7 @@ module ActiveSupport
         begin
           return unless elasticache
           elasticache.refresh
-          if @version < elasticache.version
+          if !@version  || @version < elasticache.version
             Rails.logger.info "Refreshing dalli-elasticache servers. New servers: #{@elasticache.servers}, version: #{@elasticache.version}"
             @version = elasticache.version
             if @pool_options.empty?
