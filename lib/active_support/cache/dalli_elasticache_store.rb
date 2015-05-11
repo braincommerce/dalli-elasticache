@@ -27,22 +27,34 @@ module ActiveSupport
         @refreshed_at = Time.now
         return unless elasticache
 
-        old_version = elasticache.version
-        elasticache.refresh
-        if old_version < elasticache.version
-          Rails.logger.info "Refreshing dalli-elasticache servers. New servers: #{@elasticache.servers}, version: #{@elasticache.version}"
-          if @pool_options.empty?
-            @data = Dalli::Client.new(elasticache.servers, @options)
-          else
-            @data = ::ConnectionPool.new(@pool_options.dup) { Dalli::Client.new(elasticache.servers, @options.merge(:threadsafe => false)) }
-          end
-        end
+        Thread.new {check_version}
       end
 
       private 
 
+
+      #version checking can block if the elasticache node is down.
+      def check_version
+        begin
+          elasticache.refresh
+          if @version < elasticache.version
+            Rails.logger.info "Refreshing dalli-elasticache servers. New servers: #{@elasticache.servers}, version: #{@elasticache.version}"
+            @version = elasticache.version
+            if @pool_options.empty?
+              @data = Dalli::Client.new(elasticache.servers, @options)
+            else
+              @data = ::ConnectionPool.new(@pool_options.dup) { Dalli::Client.new(elasticache.servers, @options.merge(:threadsafe => false)) }
+            end
+          end
+        rescue => e
+          Airbrake.notify(e) if defined? Airbrake
+          Rails.logger.info "rescued #{e} trying to refresh elasticache"
+        end
+      end
+
       def elasticache
-        @elasticache ||= Dalli::ElastiCache.new(@endpoint)
+        @elasticache ||= Dalli::ElastiCache.new(@endpoint) 
+        @version = @elasticache.version
       rescue => e
         Rails.logger.info "Failed to fetch elasticache info: #{e.message}"
         nil
