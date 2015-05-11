@@ -16,17 +16,13 @@ module ActiveSupport
           @pool_options[:timeout] = dalli_options[:pool_timeout] if dalli_options[:pool_timeout]
         end
         @refreshed_at = Time.now
-        if elasticache
-          super(elasticache.servers, *options)
-        else
-          super([@endpoint], *options)
-        end
+        super([@endpoint], *options)
+         
+        refresh   
       end
 
       def refresh
         @refreshed_at = Time.now
-        return unless elasticache
-
         unless @refresher && @refresher.alive?
           @refresher = Thread.new {check_version; @refresher = nil}
         end
@@ -38,6 +34,7 @@ module ActiveSupport
       #version checking can block if the elasticache node is down.
       def check_version
         begin
+          return unless elasticache
           elasticache.refresh
           if @version < elasticache.version
             Rails.logger.info "Refreshing dalli-elasticache servers. New servers: #{@elasticache.servers}, version: #{@elasticache.version}"
