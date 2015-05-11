@@ -27,7 +27,9 @@ module ActiveSupport
         @refreshed_at = Time.now
         return unless elasticache
 
-        Thread.new {check_version}
+        unless @refresher && @refresher.alive?
+          @refresher = Thread.new {check_version; @refresher = nil}
+        end
       end
 
       private 
