@@ -55,8 +55,11 @@ module ActiveSupport
       end
 
       def elasticache
-        @elasticache ||= Dalli::ElastiCache.new(@endpoint) 
-        @version = @elasticache.version
+        if @elasticache.nil?
+          @elasticache = Dalli::ElastiCache.new(@endpoint) 
+          @version = @elasticache.version
+        end
+        @elasticache
       rescue => e
         Rails.logger.info "Failed to fetch elasticache info: #{e.message}"
         nil
