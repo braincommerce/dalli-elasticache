@@ -54,7 +54,6 @@ module ActiveSupport
       def elasticache
         if @elasticache.nil?
           @elasticache = Dalli::ElastiCache.new(@endpoint) 
-          @version = @elasticache.version
         end
         @elasticache
       rescue => e
